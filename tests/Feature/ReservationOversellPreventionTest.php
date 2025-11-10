@@ -53,7 +53,18 @@ class ReservationOversellPreventionTest extends TestCase
         $port = 8082;
         $publicPath = base_path('public');
 
-        $server = new Process(['php', '-S', "{$host}:{$port}", '-t', $publicPath]);
+        $env = [
+            'APP_ENV' => 'testing',
+            'DB_CONNECTION' => 'pgsql',
+            'DB_HOST' => '127.0.0.1',
+            'DB_PORT' => '5432',
+            'DB_DATABASE' => 'laravel',
+            'DB_USERNAME' => 'laravel',
+            'DB_PASSWORD' => 'secret',
+            'CACHE_STORE' => 'array',
+            'QUEUE_CONNECTION' => 'sync',
+        ];
+        $server = new Process(['php', '-S', "{$host}:{$port}", '-t', $publicPath], null, $env);
         $server->start();
         usleep(300000); // wait 300ms
 
@@ -104,7 +115,7 @@ class ReservationOversellPreventionTest extends TestCase
         $port = 8083;
         $publicPath = base_path('public');
 
-        $server = new Process(['php', '-S', "{$host}:{$port}", '-t', $publicPath]);
+        $server = new Process(['php', '-S', "{$host}:{$port}", '-t', $publicPath], null, $env);
         $server->start();
         usleep(300000);
 

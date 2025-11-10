@@ -36,10 +36,6 @@ class ValidationExamplesTest extends TestCase
 
         $this->postJson("/api/reservations/{$reservationId}/purchase", [
             'payment_reference' => $tooLong,
-        ])->assertStatus(422)->assertJson([
-            'message' => 'The given data was invalid.',
-        ])->assertJsonStructure([
-            'errors' => ['payment_reference'],
-        ]);
+        ])->assertStatus(422)->assertJsonValidationErrors('payment_reference');
     }
 }

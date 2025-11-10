@@ -54,7 +54,18 @@ class ReservationConcurrencyTest extends TestCase
         $host = '127.0.0.1';
         $port = 8001;
         $publicPath = base_path('public');
-        $process = new \Symfony\Component\Process\Process(['php', '-S', "{$host}:{$port}", '-t', $publicPath]);
+        $env = [
+            'APP_ENV' => 'testing',
+            'DB_CONNECTION' => 'pgsql',
+            'DB_HOST' => '127.0.0.1',
+            'DB_PORT' => '5432',
+            'DB_DATABASE' => 'laravel',
+            'DB_USERNAME' => 'laravel',
+            'DB_PASSWORD' => 'secret',
+            'CACHE_STORE' => 'array',
+            'QUEUE_CONNECTION' => 'sync',
+        ];
+        $process = new \Symfony\Component\Process\Process(['php', '-S', "{$host}:{$port}", '-t', $publicPath], null, $env);
         $process->start();
         usleep(200000); // wait 200ms to boot
 
