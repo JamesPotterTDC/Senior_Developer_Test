@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Proves oversell prevention under shell-driven parallel curls and purchase idempotency.
+ * One request wins the race; the rest get a safe 409.
+ */
+
 namespace Tests\Feature;
 
 use App\Models\Event;

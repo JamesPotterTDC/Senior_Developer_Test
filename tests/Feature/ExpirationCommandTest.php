@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Proves expiry runs deterministically with a fixed clock.
+ * Old reservations flip to expired; fresh ones remain reserved.
+ */
+
 namespace Tests\Feature;
 
 use App\Models\Event;

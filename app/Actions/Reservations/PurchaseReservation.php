@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Purchase a reservation idempotently.
+ * We guard with whereNull('purchased_at') so retries and races cannot double-purchase.
+ */
+
 namespace App\Actions\Reservations;
 
 use App\Models\Reservation;
@@ -17,6 +22,7 @@ class PurchaseReservation
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            // We reject wrong state or expired here to keep the hot path honest under retries.
             if ($lockedReservation->status !== Reservation::STATUS_RESERVED) {
                 if ($lockedReservation->status === Reservation::STATUS_PURCHASED) {
                     throw new HttpException(409, 'already_purchased');
@@ -28,7 +34,7 @@ class PurchaseReservation
                 throw new HttpException(409, 'invalid_or_expired_reservation');
             }
 
-            // Idempotent update: only set purchased_at if it is currently NULL.
+            // Idempotent update: only flip to purchased if not already purchased.
             $updated = Reservation::whereKey($lockedReservation->getKey())
                 ->whereNull('purchased_at')
                 ->update([
@@ -37,7 +43,7 @@ class PurchaseReservation
                 ]);
 
             if ($updated === 0) {
-                // Likely already purchased concurrently
+                // Another request won the race; signal a safe conflict.
                 throw new HttpException(409, 'already_purchased');
             }
 

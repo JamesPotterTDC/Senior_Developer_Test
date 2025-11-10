@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Reserve a ticket within a DB transaction.
+ * We lock the event row so availability maths is correct under pressure (no oversell).
+ * Availability = capacity - purchased - active reserved (not expired).
+ */
+
 namespace App\Actions\Reservations;
 
 use App\Models\Event;
@@ -13,7 +19,7 @@ class ReserveTicket
     public function handle(Event $event): Reservation
     {
         return DB::transaction(function () use ($event) {
-            // Lock the event row to prevent overselling under concurrency.
+            // Lock event pessimistically; simple and predictable.
             /** @var Event $lockedEvent */
             $lockedEvent = Event::whereKey($event->getKey())
                 ->lockForUpdate()
@@ -28,6 +34,7 @@ class ReserveTicket
                 ->where('expires_at', '>', Carbon::now())
                 ->count();
 
+            // 409 signals a state conflict (sold out). It is not a schema error (422) or a bad request (400).
             $available = $lockedEvent->capacity - $purchasedCount - $validReservedCount;
             if ($available <= 0) {
                 throw new HttpException(409, 'sold_out');

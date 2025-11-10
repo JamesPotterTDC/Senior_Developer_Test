@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Proves no oversell under parallel load against Postgres row locks.
+ * Fifty parallel reserves compete; successes never exceed capacity.
+ */
+
 namespace Tests\Feature;
 
 use App\Models\Event;

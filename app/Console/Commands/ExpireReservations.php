@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Idempotent batch expiry of reservations.
+ * We use chunkById to keep memory predictable and avoid locking large sets.
+ */
+
 namespace App\Console\Commands;
 
 use App\Models\Reservation;
@@ -27,6 +32,7 @@ class ExpireReservations extends Command
                 $ids = $chunk->pluck('id')->all();
                 $updated = Reservation::whereIn('id', $ids)
                     ->where('status', Reservation::STATUS_RESERVED)
+                    // Flip status instead of deleting; we retain history and keep writes cheap.
                     ->update(['status' => Reservation::STATUS_EXPIRED]);
                 $total += $updated;
             });

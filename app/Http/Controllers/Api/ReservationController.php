@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Thin controller: delegates to actions and maps exceptions to stable JSON envelopes.
+ * Clear responses make clients predictable under load and retries.
+ */
+
 namespace App\Http\Controllers\Api;
 
 use App\Actions\Reservations\PurchaseReservation;
@@ -20,6 +25,7 @@ class ReservationController extends Controller
             $reservation = $reserveTicket->handle($event);
         } catch (HttpException $e) {
             if ($e->getStatusCode() === 409) {
+                // Sold out: signal a conflict, not a validation error.
                 return response()->json([
                     'error' => $e->getMessage(),
                     'message' => 'Event is sold out.',
@@ -44,6 +50,7 @@ class ReservationController extends Controller
         } catch (HttpException $e) {
             $status = $e->getStatusCode();
             if ($status === 409) {
+                // 409 for already purchased or invalid/expired: safe to retry without harm.
                 return response()->json([
                     'error' => $e->getMessage(),
                     'message' => $e->getMessage() === 'already_purchased'
@@ -52,6 +59,7 @@ class ReservationController extends Controller
                 ], 409);
             }
             if ($status === 404) {
+                // Not found: standard 404 envelope.
                 return response()->json([
                     'error' => 'not_found',
                     'message' => 'Reservation not found.',
