@@ -37,7 +37,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-        # Set working-directory to app since project lives under app/
+      - name: Locate project directory
+        id: locate
+        shell: bash
+        run: |
+          if [ -f composer.json ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          elif [ -f app/composer.json ]; then
+            echo "dir=app" >> "$GITHUB_OUTPUT"
+          else
+            echo "No composer.json found in root or app/." >&2
+            ls -la
+            exit 1
+          fi
+
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -46,11 +59,11 @@ jobs:
           coverage: none
 
       - name: Install Composer dependencies
-        working-directory: ./app
+        working-directory: ${{ steps.locate.outputs.dir }}
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Generate app key
-        working-directory: ./app
+        working-directory: ${{ steps.locate.outputs.dir }}
         run: php artisan key:generate
 
       - name: Wait for Postgres
@@ -65,11 +78,11 @@ jobs:
           done
 
       - name: Run migrations
-        working-directory: ./app
+        working-directory: ${{ steps.locate.outputs.dir }}
         run: php artisan migrate --force
 
       - name: Run tests
-        working-directory: ./app
+        working-directory: ${{ steps.locate.outputs.dir }}
         run: php artisan test --colors=always
 
 
