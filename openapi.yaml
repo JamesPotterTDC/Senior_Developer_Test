@@ -1,0 +1,140 @@
+openapi: 3.0.3
+info:
+  title: Concurrent Ticket Reservation API
+  version: 1.0.0
+  description: API for reserving and purchasing tickets with pessimistic locking.
+servers:
+  - url: http://localhost:8000
+paths:
+  /api/events/{event}/reserve:
+    post:
+      summary: Reserve a ticket for an event
+      parameters:
+        - in: path
+          name: event
+          required: true
+          schema: { type: integer }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "409":
+          description: Sold out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                soldOut:
+                  value: { error: "sold_out", message: "Event is sold out." }
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+  /api/reservations/{reservation}/purchase:
+    post:
+      summary: Purchase a reservation
+      parameters:
+        - in: path
+          name: reservation
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payment_reference:
+                  type: string
+                  maxLength: 64
+      responses:
+        "200":
+          description: Purchased
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Already purchased or invalid/expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                already:
+                  value: { error: "already_purchased", message: "Reservation already purchased." }
+                invalidOrExpired:
+                  value: { error: "invalid_or_expired_reservation", message: "Reservation is invalid or expired." }
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+  /api/events/{event}:
+    get:
+      summary: Get event stats
+      parameters:
+        - in: path
+          name: event
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Event stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+components:
+  schemas:
+    Event:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        capacity: { type: integer }
+        purchased: { type: integer }
+        reserved: { type: integer }
+        available: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    Reservation:
+      type: object
+      properties:
+        id: { type: integer }
+        event_id: { type: integer }
+        status: { type: string, enum: [reserved, purchased, expired, canceled] }
+        expires_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        purchased_at: { type: string, format: date-time, nullable: true }
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        message: { type: string }
+    ValidationError:
+      type: object
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+

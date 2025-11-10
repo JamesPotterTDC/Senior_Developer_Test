@@ -30,11 +30,28 @@
 - `POST /api/events/{event}/reserve`
   - 201: `{"id","event_id","status","expires_at","created_at"}`
   - 409: `{"error":"sold_out","message":"Event is sold out."}`
-  - 422: Laravel validation errors
+  - 422: Laravel validation errors (example)
+    ```json
+    {
+      "message": "The given data was invalid.",
+      "errors": {
+        "event": ["The selected event is invalid."]
+      }
+    }
+    ```
 - `POST /api/reservations/{reservation}/purchase`
   - 200: `{"id","event_id","status","expires_at","created_at","updated_at"}`
   - 409: `{"error":"invalid_or_expired_reservation"}` or `{"error":"already_purchased"}`
   - 404: `{"error":"not_found"}`
+  - 422: Laravel validation errors (example when `payment_reference` is too long)
+    ```json
+    {
+      "message": "The given data was invalid.",
+      "errors": {
+        "payment_reference": ["The payment reference must not be greater than 64 characters."]
+      }
+    }
+    ```
 - `GET /api/events/{event}`
   - 200: `{"id","name","capacity","purchased","reserved","available","created_at","updated_at"}`
 
@@ -44,7 +61,7 @@
    ```bash
    make db-up
    ```
-   This boots Postgres 15+ on `127.0.0.1:5432` with DB `laravel`, user `laravel`, pass `secret`.
+   This boots Postgres 14+ on `127.0.0.1:5432` with DB `laravel`, user `laravel`, pass `secret`.
 3. Configure testing DB:
    - `.env.testing` is included with:
      ```
@@ -73,6 +90,7 @@ make test
 Notes:
 - `phpunit.xml` no longer forces SQLite; it respects `.env.testing` for Postgres.
 - Concurrency tests are marked to require `pdo_pgsql`.
+- CI runs the suite on push via GitHub Actions with a Postgres service.
 
 ### Scheduler / Expiration
 - Command: `php artisan reservations:expire`

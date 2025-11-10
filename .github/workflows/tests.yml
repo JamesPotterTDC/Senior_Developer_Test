@@ -1,0 +1,75 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  php-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_DB: laravel
+          POSTGRES_USER: laravel
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U laravel -d laravel"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: laravel
+      DB_USERNAME: laravel
+      DB_PASSWORD: secret
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+        # Set working-directory to app since project lives under app/
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_pgsql
+          coverage: none
+
+      - name: Install Composer dependencies
+        working-directory: ./app
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Generate app key
+        working-directory: ./app
+        run: php artisan key:generate
+
+      - name: Wait for Postgres
+        run: |
+          for i in {1..60}; do
+            if php -r 'try { new PDO("pgsql:host=127.0.0.1;port=5432;dbname=laravel", "laravel", "secret"); exit(0);} catch (Throwable $e) { exit(1);}'; then
+              echo "Postgres is ready"
+              break
+            fi
+            echo "Waiting for Postgres..."
+            sleep 1
+          done
+
+      - name: Run migrations
+        working-directory: ./app
+        run: php artisan migrate --force
+
+      - name: Run tests
+        working-directory: ./app
+        run: php artisan test --colors=always
+
+
